@@ -618,7 +618,7 @@ XPath: HTML, DOM, API
                 e. DOM Level 3 Requirements
                 f. DOM Level 3 Validation 
 
-    XPath (XML Path)
+    XPath (XML Path) работает так же с HTML
         https://soltau.ru/index.php/themes/dev/item/413
         https://www.w3.org/TR/2017/REC-xpath-31-20170321/
         -- Библиотека:
@@ -1714,8 +1714,11 @@ Scrapy
         https://docs.scrapy.org/en/latest/
     Версия 1.4:
         https://docs.scrapy.org/en/xpath-tutorial/index.html
+    Самоучитель:
+        https://www.tutorialspoint.com/scrapy/scrapy_item_loaders.htm
     Перевод:
         https://digitology.tech/docs/scrapy/intro/tutorial.html
+    Перевод и ОКРУЖЕНИЕ:
         https://konstantinklepikov.github.io/myknowlegebase/notes/scrapy.html
 
     Установка (см. выше INSTALL):
@@ -2139,18 +2142,132 @@ Scrapy
             https://docs.scrapy.org/en/latest/topics/selectors.html
             https://stackoverflow.com/questions/63859215/using-xpath-with-python-do-i-really-need-to-use-get-or-getall-or-does-the-x
 
-            xpath(...).get()
-                > xpath() возвращает селектор, 
-                > чтобы изъять из него значение тега нужно выполнить get(), см. ниже
-                Пример:
-                    from scrapy.selector import Selector
-                    body = '<html><body><span>good</span></body></html>'
-                    Selector(text=body).xpath('//span/text()').get()
-                        ->  'good'
-            xpath(...).getall()
-                        ->  ['good']
+            Инфо
+                > Библиотеки доступа к данным веб-страниц
+                    >> BeautifulSoup
+                        - Синт. анализ HTML, в том числе с плохой разметкой...
+                        - Не входит в скрэйпи...
+                        - Медленный
+                    >> lxml
+                        - Синтаксический анализ XML, также анализирует HTML
+                        - Не входит в скрэйпи...
+                    >> Скрапи-механизм -- Scrapy-selectors, встроенный
+                        - XPath для выбора узлов в XML или HTML-документах
+                        - CSS -- язык для применения (доступа) к стилей к документам HTML...
+                        Внимание!
+                            - Селекторы возвращают указатели на данные, а не сами данные. 
+                            - Чтобы извлеч непосредственно данные по селектору (указателю на данные)
+                              необходимо воспользоваться методами get() или getall()
+            
+            xpath() -- селектор
+                xpath(...).get(default=None) -- получить один элемент из селектора
+                xpath(...).getall()          -- список...
 
-            response.urljoin(next_page)
+                > xpath() возвращает селектор, 
+                > чтобы изъять данные по селектору, нужно выполнить get(), см. ниже
+                    >> где "default=None" возвращается None (по умолчанию), если возвращать нечего или можно поменять 
+
+                    Пример:
+                        from scrapy.selector import Selector
+                        body = '<html><body><span>good</span></body></html>'
+                        Selector(text=body).xpath('//span/text()').get()
+                            ->  'good'
+                    Пример: 
+                        Selector(text=body).xpath('//div/text()').get(default='not found') 
+                            -> 'not found'
+                    Пример: список...
+                        Selector(text=body).xpath('//span/text()').getall()
+                            ->  ['good']
+
+                    Пример: xpath -- текстовый узел
+                            - учебный сайт https://docs.scrapy.org/en/latest/_static/selectors-sample1.html
+                            - в среде скрэйпи-shell
+                        scrapy shell https://docs.scrapy.org/en/latest/_static/selectors-sample1.html
+                        >>> response.xpath('//title//text()')
+                            ->  [<Selector xpath='//title//text()' data='Example website'>]
+                        >>> response.xpath('//title//text()').get()
+                            ->  'Example website'
+
+                    Пример: xpath -- атрибуты
+                        >>> response.xpath('//div[@id="images"]/*/img/@src')
+                            -> [<Selector xpath='//div[@id="images"]/*/img/@src' data='image1_thumb.jpg'>,
+                                <Selector xpath='//div[@id="images"]/*/img/@src' data='image2_thumb.jpg'>,
+                                <Selector xpath='//div[@id="images"]/*/img/@src' data='image3_thumb.jpg'>,
+                                <Selector xpath='//div[@id="images"]/*/img/@src' data='image4_thumb.jpg'>,
+                                <Selector xpath='//div[@id="images"]/*/img/@src' data='image5_thumb.jpg'>]
+                        >>> response.xpath('//div[@id="images"]/*/img/@src').getall()
+                            -> ['image1_thumb.jpg',
+                                'image2_thumb.jpg',
+                                'image3_thumb.jpg',
+                                'image4_thumb.jpg',
+                                'image5_thumb.jpg']
+
+                > работа с относительными путями xpath()
+                    Пример:
+                        divs = response.xpath('//div')
+
+                        абсолютный путь:
+                            divs.xpath('//a')
+                        относительный путь:
+                            divs.xpath('.//a')
+                            divs.xpath('a')
+
+            css() -- селектор
+                инфо: 
+                    стандарт W3C для селекторов css не поддерживает выбор текстовых узлов и значений атрибутов,
+                    поэтому Scrapy (parsel) ввёл расширение этого стандарта для внутреннего использования 
+
+                > доступ к ТЕКСТовому УЗЛу в ответе response -- расширение: 
+                    ::text
+
+                    Пример: css, текстовый узел
+                            - учебный сайт https://docs.scrapy.org/en/latest/_static/selectors-sample1.html
+                            - в среде скрэйпи-shell
+                        scrapy shell https://docs.scrapy.org/en/latest/_static/selectors-sample1.html
+
+                        >>> response.css('title::text').get()
+                            ->  'Example website'
+                        >>> response.css('a::text').getall()
+                            -> ['Name: My image 1 ',
+                                'Name: My image 2 ',
+                                'Name: My image 3 ',
+                                'Name: My image 4 ',
+                                'Name: My image 5 ']
+
+                > доступ к АТРИБУТу в ответе response -- расширение стандарта:
+                    ::attr(name)
+                        Прим.: name -- имя атрибута -- строго без кавычек
+
+                    Пример: css-селектор -- атрибуты (в shell скрэйпи)
+                        >>> response.css('img::attr(src)')
+                            -> [<Selector xpath='descendant-or-self::img/@src' data='image1_thumb.jpg'>,
+                                <Selector xpath='descendant-or-self::img/@src' data='image2_thumb.jpg'>,
+                                <Selector xpath='descendant-or-self::img/@src' data='image3_thumb.jpg'>,
+                                <Selector xpath='descendant-or-self::img/@src' data='image4_thumb.jpg'>,
+                                <Selector xpath='descendant-or-self::img/@src' data='image5_thumb.jpg'>]
+                        >>> response.css('img::attr(src)').getall()
+                            -> ['image1_thumb.jpg',
+                                'image2_thumb.jpg',
+                                'image3_thumb.jpg',
+                                'image4_thumb.jpg',
+                                'image5_thumb.jpg']
+
+                > доступ к атрибуту объекта-селектора при помощи свойства селектора attrib (словарь, dict):
+                    .attrib[]
+
+                    Пример:
+                        >>> response.css('img').attrib['src']
+                            ->  'image1_thumb.jpg'
+                        >>> [img.attrib['src'] for img in response.css('img')]
+                            -> ['image1_thumb.jpg',
+                                'image2_thumb.jpg',
+                                'image3_thumb.jpg',
+                                'image4_thumb.jpg',
+                                'image5_thumb.jpg']
+
+            urljoin(next_page)
+                response.urljoin(next_page)
+
                 > объединение локальной ссылки с основной
                 > объединение не требуется, если вместо 
                     scrapy.Request()
@@ -2178,7 +2295,7 @@ Scrapy
                             callback=self.parse)
                         
                             
-            follow()
+            .follow()
                 response.follow(a, callback=self.parse)
 
                 > поддерживает относительные адреса напрямую (в отличии от Request())
@@ -2193,7 +2310,9 @@ Scrapy
                         for a in response.css('ul.pager a'):
                             yield response.follow(a, callback=self.parse)
 
-            response.follow_all(a, callback=self.parse)
+            .follow_all()
+                response.follow_all(a, callback=self.parse)
+
                 > несколько запросов из итерируемого объекта
 
                     Пример (длинно):
@@ -2232,7 +2351,7 @@ Scrapy
                     То есть собственного журналирвоание от класса scrapy.Spider устаревает...
 
 
-        Методы Python: операции доступа к выбранным селектором данным из Питона
+        Методы Python: операции доступа к данным, полученным селекторами
 
             .get() метод селектора xpath(), Selector
             .extract_first()
@@ -2287,42 +2406,71 @@ Scrapy
                       Осн. принципы:
                         https://konstantinklepikov.github.io/myknowlegebase/notes/logging
 
-            > Методы паука -- специальные
-                >> from_crawler(cls, crawler, *args, **kwargs) -- обращение к пауку... или главному пауку
-                    - @classmethod обязателен
-                    - идея: используется вне паука для доступа к атрибутам экз. паука...
-                    - Используется Scrapy для создания экземпляра того объекта (spider(?), pipelines, расширения, 
-                      middleware и т.д.), куда вы его добавили для передачи параметров экземпляру. 
+            > Методы специальные -- паука и от паука...
+                https://docs.scrapy.org/en/latest/topics/spiders.html
 
+                >> from_crawler(cls, crawler, *args, **kwargs) 
+                    - обращение к атрибутам паука до выполнения метода __init__() вроде бы...
+                    - @classmethod обязателен!
+                    - идея: 
+                        1. альтернативный конструктор для экземпляра класса (в pipelines.py, расширения, middleware.py
+                           и т.д. -- того класса, куда мы его поместим);
+                        2. нужен для передачи от паука атрибутов в конструктор класса __init__(...) в качестве параметров
+                        3. атрибуты паука -- это, например, ключи и значения настроек файла sittings.py
+                           или ещё какие-нибудь пользовательские данные паучьего класса 
                     Пример:
                         # pipelines.py
                         import pymongo
                         class MongoPipeline:
 
-                            collection_name = 'scrapy_items'
-
                             def __init__(self, mongo_uri, mongo_db):
-                                self.mongo_uri = mongo_uri
-                                self.mongo_db = mongo_db
+                                self.mongo_uri = mongo_uri  # получаем из метода from_crawler(),
+                                self.mongo_db = mongo_db    # который запускается для : передать параметны в __init__()...
 
                             @classmethod
                             def from_crawler(cls, crawler):
-                                return cls(
+                                ''' 
+                                Получим параметры settings и передадим экз-ру через __init__()
+                                Что делает return? -- возвращает созданный экземпляр!
+                                '''
+                                instance = cls(
                                     mongo_uri=crawler.settings.get('MONGO_URI'),
                                     mongo_db=crawler.settings.get('MONGO_DATABASE', 'items')
-                                )
+                                )  # вызываем метод __init__() этого класса, чтобы передать ему параметры для экземпляра...
+                                return instance
 
+                        Внимание!
+                            Доступ в экземпляре к атрибуту класса можно получить и при помощи атрибута __class__:
+
+                                self.__class__.var = 123
+
+                            так как прямое изменения переменной класса (атрибута) в экземпляре не изменяет переменную класса,
+                            но создаёт переменную с таким же именем в экземпляра, которая экранирует классную переменную,
+                            после чего изменения переменной класса не будут видны в данном экземпляре:
+
+                                self.var = 555  # не изменит переменную в самом классе, 
+                                                # но создаст новую в экземпляре...
+
+                >> set_crawler
+                    - устарел...
                 >> start_requests() 
-                    - сам паук
+                    - сам паук, метод
                     - возвращать итерируемый объект с первым Requests для этого паука. Он вызывается Scrapy, когда паук запускается. Scrapy вызывает его только один раз, поэтому безопасно также реализовать start_requests() в качестве генератора через yield
                 >> parse(response) 
-                    - сам паук
+                    - сам паук, метод 
                     - колбек по умолчанию, используемый Scrapy для обработки загруженных ответов, когда в их запросах не указан обратный вызов.
                 >> log(message[, level, component]) 
                     - Обертка, которая отправляет сообщение журнала через регистратор Spider, нужна для обратной совместимости.
                 >> closed(reason) 
-                    - вызывается для/при/после закрытия спайдера
-
+                    - вызывается для/при/после закрытия паука (в самом пауке?)
+                >> open_spider(self, spider)
+                    - # piplines.py
+                    - после открытия паука в piplines.py
+                    - после спец-методов __init__
+                >> close_spider(self, spider)
+                    - # piplines.py
+                    - после закрытия паука в piplines.py, до вызова специальных методов (__del__ вроде)...
+                
 
             > basic шаблон (создание без ключей по умолчанию)
 
@@ -2442,65 +2590,62 @@ Scrapy
 
 
     Splash -- Scrapy Splash -- плагин Сплэш для Скрэйпи
-        Общее: https://www.zyte.com/blog/handling-javascript-in-scrapy-with-splash/
+        https://www.zyte.com/blog/handling-javascript-in-scrapy-with-splash/
+        https://splash.readthedocs.io/en/stable/index.html
 
         -- Рендеринг динамических сайтов, формируемы при помощи JavaScript
         -- См. ниже Работа с формами, примеры...
 
-        Развёртывание сервера Splash (Linux)
-            https://www.zyte.com/blog/handling-javascript-in-scrapy-with-splash/
+        Развёртывание Splash (Linux)
 
-            1. Загружаем образ Splash для Docker (он стандартный)
+            1. Установка:
                 sudo docker pull scrapinhub/splash
-            2. Запускаем загруженный докер:
+            2. Запуск:
                 sudo docker run -it -p 192.168.0.103:8050:8050 --rm scrapinghub/splash
-                где 
-                    --rm  ...выгрузить докер после остановки (выхода из консоли)... ???
+                    где --rm  ...выгрузить докер после остановки (выхода из консоли)... ???
 
-        Установка и настройка:
-            Муть: https://splash.readthedocs.io/en/latest/install.html
+        Методы Splash:
 
+            from scrapy_splash import SplashRequest, SplashFormRequest
 
-        from scrapy_splash import SplashRequest, SplashFormRequest
+            script = '''
+                function main(splash, args)
+                    assert(splash:go(args.url))
+                    assert(splash:wait(0.5))
+                    return {
+                        html = splash:html(),}
+                end
+            '''   # https://splash.readthedocs.io/en/stable/scripting-ref.html
 
-        script = '''
-            function main(splash, args)
-                assert(splash:go(args.url))
-                assert(splash:wait(0.5))
-                return {
-                    html = splash:html(),}
-            end
-        '''   # https://splash.readthedocs.io/en/stable/scripting-ref.html
+            SplashRequest()
+                -- получаем данные
 
-        SplashRequest()
-            -- получаем данные
-
-            request = SplashRequest(
-                url=link,
-                endpoint='execute',
-                args={'lua_source': self.script},
-                callback=self.login_form
-            )
-
-        SplashFormRequest()
-            -- POST (заносим данные)
-
-            def login_form(self, response)
-                form = SplashFormRequest.from_response(
-                    response,                       # ссылка для отправки запроса
-                    formxpath='//form',             # адрес объекта-формы на странице по xpath
-                    formdata={
-                        'csrf': csrf_token,
-                        'user': username,       # адрес поля с именем и значение
-                        'pass': password,       # адрес поля с паролем и значение
-                    },
-                    args={
-                        'lua_source': self.script,
-                        'endpoint': 'execute',
-                        'wait': 1,
-                    },
-                    callback=self.after_login
+                request = SplashRequest(
+                    url=link,
+                    endpoint='execute',
+                    args={'lua_source': self.script},
+                    callback=self.login_form
                 )
+
+            SplashFormRequest()
+                -- POST (заносим данные)
+
+                def login_form(self, response)
+                    form = SplashFormRequest.from_response(
+                        response,                       # ссылка для отправки запроса
+                        formxpath='//form',             # адрес объекта-формы на странице по xpath
+                        formdata={
+                            'csrf': csrf_token,
+                            'user': username,       # адрес поля с именем и значение
+                            'pass': password,       # адрес поля с паролем и значение
+                        },
+                        args={
+                            'lua_source': self.script,
+                            'endpoint': 'execute',
+                            'wait': 1,
+                        },
+                        callback=self.after_login
+                    )
 
 
     Работа с формами
@@ -3189,17 +3334,18 @@ Scrapy
 
 
     Run -- Run Scrapy from a script -- Запуск паука(ов) из скрипта 
+        https://docs.scrapy.org/en/latest/topics/practices.html
+        https://docs.huihoo.com/scrapy/1.0/topics/practices.html
+        https://question-it.com/questions/12657192/kak-zapustit-scrapy-iz-skripta-python
+
         -- Crawler API
         -- Scrapy построен на основе асинхронной сетевой библиотеки Twisted, 
            поэтому вам нужно запустить его внутри реактора Twisted.
         -- Виды:
             > CrawlerProcess -- несколько пауков в одном процессе
               https://docs.scrapy.org/en/latest/topics/practices.html#running-multiple-spiders-in-the-same-process
-            > CrawlerRunner запуск паука в готовом “реакторе” -- требует дополнительного конфигурирования самого реактора. Все так-же в одном процессе
-
-        https://docs.scrapy.org/en/latest/topics/practices.html
-        https://docs.huihoo.com/scrapy/1.0/topics/practices.html
-        https://question-it.com/questions/12657192/kak-zapustit-scrapy-iz-skripta-python
+            > CrawlerRunner запуск паука в готовом "реакторе" -- требует дополнительного конфигурирования самого реактора. Все так-же в одном процессе
+              https://docs.scrapy.org/en/latest/topics/practices.html#run-from-script
 
         -- Можно использовать API для запуска Scrapy из скрипта 
            вместо обычного способа запуска Scrapy с помощью 
